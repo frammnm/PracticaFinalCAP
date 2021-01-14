@@ -82,13 +82,13 @@ int main(int argc, char* argv[]) {
 	a = create_matrix(n+2);
 	b = create_matrix(n+2);
 
-	init_matrix(a,n+2);
+	init_matrix(a, n+2);
 
 	//Initialize the hot boundaries
 	for(i=0;i<n+2;i++) {
 		a[i][0] = BC_HOT;
-    a[i][n+1] = BC_HOT;
-    a[0][i] = BC_HOT;
+	    a[i][n+1] = BC_HOT;
+	    a[0][i] = BC_HOT;
 	}
 
 	// Initialize the cold boundary
