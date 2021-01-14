@@ -299,7 +299,7 @@ double get_max_diff(double **a, double **b, int p, double *north, double *south,
 	return maxdiff;
 }
 
-void com_borders(int rank, int col, int row, int p, double **a, double *north, double *south, double *east, double *west, double *send_buffer, double *recv_buffer)
+void com_borders(int rank, int col, int row, int p, double **a, double *north, double *south, double *east, double *west, double *send_buffer)
 {
 	int j;
 
@@ -312,31 +312,15 @@ void com_borders(int rank, int col, int row, int p, double **a, double *north, d
 		}
 		MPI_Send(send_buffer, p, MPI_DOUBLE, rank - p, 0, MPI_COMM_WORLD);
 	}
-	// If im not in the last row, ill receive a bottom border
-	if (row != p - 1)
-	{
-		MPI_Recv(south, p, MPI_DOUBLE, rank + p, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		printf("Received bot border [%i] from [%i]:\n", rank, rank + p);
-		print_array_double(rank, south, p, "southR");
-	}
-
 	//If im not in last row, i have to send my bottom border
 	if (row != p - 1)
 	{
 		for (j = 0; j < p; j++)
 		{
-			send_buffer[j] = a[p][j];
+			send_buffer[j] = a[p - 1][j];
 		}
 		MPI_Send(send_buffer, p, MPI_DOUBLE, rank + p, 0, MPI_COMM_WORLD);
 	}
-	//If im in not ii the first row, ill receive a top border
-	if (row != 0)
-	{
-		MPI_Recv(north, p, MPI_DOUBLE, rank - p, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		printf("Received top border [%i] from [%i]:\n", rank, rank - p);
-		print_array_double(rank, north, p, "northR");
-	}
-
 	//If im not in first column, i have to send my left border
 	if (col != 0)
 	{
@@ -347,69 +331,93 @@ void com_borders(int rank, int col, int row, int p, double **a, double *north, d
 
 		MPI_Send(send_buffer, p, MPI_DOUBLE, rank - 1, 0, MPI_COMM_WORLD);
 	}
-	//If im not in the last column, ill receive a right border
-	if (col != p - 1)
-	{
-		MPI_Recv(east, p, MPI_DOUBLE, rank + 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	}
-
 	//If im not in last column, I have to send my right border
 	if (col != p - 1)
 	{
 		for (j = 0; j < p; j++)
 		{
-			send_buffer[j] = a[j][p];
+			send_buffer[j] = a[j][p - 1];
 		}
-
 		MPI_Send(send_buffer, p, MPI_DOUBLE, rank + 1, 0, MPI_COMM_WORLD);
+	}
+
+	//If im in not in the first row, ill receive a top border
+	if (row != 0)
+	{
+		MPI_Recv(north, p, MPI_DOUBLE, rank - p, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	}
+	// If im not in the last row, ill receive a bottom border
+	if (row != p - 1)
+	{
+		MPI_Recv(south, p, MPI_DOUBLE, rank + p, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	}
 	//If im not in the first column, ill receive a left border
 	if (col != 0)
 	{
 		MPI_Recv(west, p, MPI_DOUBLE, rank - 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	}
+	//If im not in the last column, ill receive a right border
+	if (col != p - 1)
+	{
+		MPI_Recv(east, p, MPI_DOUBLE, rank + 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	}
 }
 
-void fill_res(double **a, int rank, int n, double **res)
+void fill_res(double *rcv, int rank, int p, double **res)
 {
-	int i, j;
-	int p = (int)sqrt(n);
-	int col = rank % ((int)sqrt(n)) * p;
-	int row = (int)(rank / (int)sqrt(n)) * p;
+	int i, j, iter;
+	int col = (rank % p) * p;
+	int row = (int)(rank / p) * p;
 
+	iter = 0;
 	for (i = 0; i < p; i++)
 	{
 		for (j = 0; j < p; j++)
 		{
-			res[row + i][col + j] = a[i][j];
+			res[row + i][col + j] = rcv[iter];
+			iter++;
 		}
 	}
 }
 
-void get_results(int rank, int n, double **a, double **b, double **res)
+void get_results(int rank, int p, double **a, double **b, double **res)
 {
+	int iter = 0;
+	double *res_buff = malloc(sizeof(double) * (p * p));
+
+	for (int j = 0; j < p; j++)
+	{
+		for (int i = 0; i < p; i++)
+		{
+			res_buff[iter] = a[i][j];
+			iter++;
+		}
+	}
+
 	// Receive results from other nodes
 	if (rank == 0)
 	{
-		// MPI_Send(a[0], n * n, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
-		// MPI_Recv(res[0], 1, double_strided_vect, root_rank, generic_tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		for (int i = 1; i < n; i++)
+		fill_res(res_buff, 0, p * p, res);
+
+		for (int i = 1; i < p * p; i++)
 		{
-			MPI_Recv(b, 9, MPI_DOUBLE, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-			fill_res(b, i, n, res);
+			MPI_Recv(res_buff, p * p, MPI_DOUBLE, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			printf("Received from [%d]: \n", i);
+			print_array_double(rank, res_buff, p * p, "resarr");
+			fill_res(res_buff, i, p * p, res);
 		}
 	}
 	else
 	{
 		// Send my results to root
-		MPI_Send(a, n, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+		MPI_Send(res_buff, p * p, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
 	}
 }
 
 int main(int argc, char *argv[])
 {
 	int i, j, p, n, iteration, my_column, my_row;
-	double **a, **b, **result, maxdiff;
+	double **a, **b, **result, maxdiff, local_diff;
 	double tstart, tend, ttotal;
 
 	if (argc < 1)
@@ -457,7 +465,6 @@ int main(int argc, char *argv[])
 	west = malloc(sizeof(double) * p);
 
 	double *send_buffer = malloc(sizeof(double) * p);
-	double *recv_buffer = malloc(sizeof(double) * p);
 
 	//Sides for each submatrix (could be hot, cold or usual data)
 	init_matrix_borders(my_column, my_row, p, north, south, east, west);
@@ -484,14 +491,14 @@ int main(int argc, char *argv[])
 
 	tstart = MPI_Wtime();
 	// tstart = get_clock();
-	int iter = 0;
 	while (maxdiff > TOL && iteration < MAX_ITERATIONS)
 	{
+		local_diff = get_max_diff(a, b, p, north, south, east, west);
+		com_borders(world_rank, my_column, my_row, p, a, north, south, east, west, send_buffer);
 
-		//printf("Iteration=%d\n",iter);
-		iter++;
-		maxdiff = get_max_diff(a, b, p, north, south, east, west);
-		com_borders(world_rank, my_column, my_row, p, a, north, south, east, west, send_buffer, recv_buffer);
+		// All get the maximum diff
+		MPI_Allreduce(&maxdiff, &local_diff, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+		maxdiff = local_diff;
 
 		// Copy b to a
 		swap_matrix(&a, &b);
@@ -501,7 +508,7 @@ int main(int argc, char *argv[])
 	tend = MPI_Wtime();
 	ttotal = tend - tstart;
 
-	// get_results(world_rank, n, a, b, result);
+	get_results(world_rank, p, a, b, result);
 
 	print_grid(a, 0, p);
 	// Output final grid
