@@ -169,10 +169,14 @@ int main(int argc, char* argv[]) {
 	south = malloc(sizeof(double) * p);
 	east  = malloc(sizeof(double) * p);
 	west  = malloc(sizeof(double) * p);
+
+	double *send_buffer = malloc(sizeof(double) * p);
+	double *recv_buffer = malloc(sizeof(double) * p);
 	
 	//Sides for each submatrix (could be hot, cold or usual data)
 	init_matrix_sides(my_column, my_row, p, north, south, east, west);
 	init_matrix(a, p);
+	// init_matrix(b, p);
 
 	//This doesn't work anymore since we don't work with the full matrix
 	//Initialize the hot boundaries
@@ -188,8 +192,8 @@ int main(int argc, char* argv[]) {
 	// }
 
 	// Copy a to b
-	// for(i=0; i<n+2; i++) {
-	// 	for(j=0; j<n+2; j++) {
+	// for(i=0; i<p; i++) {
+	// 	for(j=0; j<p; j++) {
 	// 		b[i][j] = a[i][j];
 	// 	}
 	// }
@@ -231,7 +235,7 @@ int main(int argc, char* argv[]) {
         }
 
 		//Elements m[1, p-2] 
-		i = 0
+		i = 0;
 		for (j = 1; j < p - 1; j++) {
 			b[i][j] = 0.2 * (a[i][j] + north[j] + a[i+1][j] + a[i][j-1] + a[i][j+1]);
 			if (fabs(b[i][j] - a[i][j]) > maxdiff) {
@@ -246,7 +250,7 @@ int main(int argc, char* argv[]) {
         }
 		
 		//Column 0 m[1, p-2]
-		j = 0
+		j = 0;
 		for (i = 1; i < p - 1; i++) {
 			b[i][j] = 0.2 * (a[i][j] + a[i-1][j] + a[i+1][j] + west[i] + a[i][j+1]);
 			if (fabs(b[i][j] - a[i][j]) > maxdiff) {
@@ -261,7 +265,7 @@ int main(int argc, char* argv[]) {
         }
 
 		//Row p-1
-		i = p - 1
+		i = p - 1;
 		for (j = 1; j < p - 1; j++) {
 			b[i][j] = 0.2 * (a[i][j] + a[i-1][j] + south[j] + a[i-1][j] + a[i][j+1]);
 			if (fabs(b[i][j] - a[i][j]) > maxdiff) {
@@ -276,7 +280,7 @@ int main(int argc, char* argv[]) {
         }
 
 		//Column p-1 m[1, p-2]
-		j = p-1
+		j = p - 1;
 		for (i = 1; i < p - 1; i++) {
 			b[i][j] = 0.2 * (a[i][j] + a[i-1][j] + a[i+1][j] + a[i][j-1] + east[i]);
 			if (fabs(b[i][j] - a[i][j]) > maxdiff) {
@@ -285,8 +289,45 @@ int main(int argc, char* argv[]) {
 		}
 
 		//Comunicate border values
+		// no upper bound
+		// if (my_row != 0) {
+		// 	for (j = 0; j < p; j++) {
+		// 		send_buffer[j] = a[0][j];
+		// 	}
+			
+		// 	MPI_Send(&send_buffer, p, MPI_DOUBLE, world_rank - p, 0, MPI_COMM_WORLD);
 
+		//  MPI_Recv(&north, p, MPI_DOUBLE, world_rank - p, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		// }
 
+		// if (my_column != 0) {
+		// 	for (i = 0; i < p; j++) {
+		// 		send_buffer[i] = a[i][0];
+		// 	}
+			
+		// 	MPI_Send(&send_buffer, p, MPI_DOUBLE, world_rank - 1, 0, MPI_COMM_WORLD);
+		// }
+
+		// if (my_row != p - 1) {
+		// 	for (j = 0; j < p; j++) {
+		// 		send_buffer[j] = a[p-1][j];
+		// 	}
+			
+		// 	MPI_Send(&send_buffer, p, MPI_DOUBLE, world_rank + p, 0, MPI_COMM_WORLD);
+		// }
+
+		// if (my_column != p - 1 ) {
+		// 	for (i = 0; i < p; j++) {
+		// 		send_buffer[i] = a[i][p-1];
+		// 	}
+			
+		// 	MPI_Send(&send_buffer, p, MPI_DOUBLE, world_rank + 1, 0, MPI_COMM_WORLD);	
+		// }
+
+		// if (my_row != 0) MPI_Recv(&north, p, MPI_DOUBLE, world_rank - p, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		// if (my_column != 0) MPI_Recv(&west, p, MPI_DOUBLE, world_rank - 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		// if (my_row != p - 1) MPI_Recv(&south, p, MPI_DOUBLE, world_rank + p, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		// if (my_column != p - 1 ) MPI_Recv(&east, p, MPI_DOUBLE, world_rank + 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		//Calculate max difference between procceses
 
 
