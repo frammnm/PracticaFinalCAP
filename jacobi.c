@@ -8,7 +8,7 @@
 #define BC_HOT  1.0
 #define BC_COLD 0.0
 #define INITIAL_GRID 0.5
-#define N_DIM 16 
+#define N_DIM 9 
 #define MAX_ITERATIONS 1000
 #define TOL 1.0e-4
 

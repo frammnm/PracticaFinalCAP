@@ -366,15 +366,21 @@ void com_borders(int rank, int col, int row, int p, double **a, double *north, d
 void fill_res(double *rcv, int rank, int p, double **res)
 {
 	int i, j, iter;
-	int col = (rank % p) * p;
-	int row = (int)(rank / p) * p;
+	int col = (rank % p);
+	int row = (int)(rank / p);
+
+	// if (rank == 1) {
+	// 	printf("Filling result of rank [%d] col [%d] and row [%d] ->\n", rank, col, row);
+	// 	print_array_double(rank, rcv, p, "received");
+	// }
 
 	iter = 0;
 	for (i = 0; i < p; i++)
 	{
 		for (j = 0; j < p; j++)
 		{
-			res[row + i][col + j] = rcv[iter];
+			res[(row * p) + i][(col * p) + j] = rcv[iter];
+			// if (rank == 1) printf("Filled result[%d][%d] with value [%6.4lf] \n", row + i, col + j, rcv[iter]);
 			iter++;
 		}
 	}
@@ -385,9 +391,9 @@ void get_results(int rank, int p, double **a, double **b, double **res)
 	int iter = 0;
 	double *res_buff = malloc(sizeof(double) * (p * p));
 
-	for (int j = 0; j < p; j++)
+	for (int i = 0; i < p; i++)
 	{
-		for (int i = 0; i < p; i++)
+		for (int j = 0; j < p; j++)
 		{
 			res_buff[iter] = a[i][j];
 			iter++;
@@ -397,14 +403,17 @@ void get_results(int rank, int p, double **a, double **b, double **res)
 	// Receive results from other nodes
 	if (rank == 0)
 	{
-		fill_res(res_buff, 0, p * p, res);
+		fill_res(res_buff, 0, p, res);
+
+		// print_grid(res, 0, p * p); result ok till here
 
 		for (int i = 1; i < p * p; i++)
 		{
 			MPI_Recv(res_buff, p * p, MPI_DOUBLE, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-			printf("Received from [%d]: \n", i);
-			print_array_double(rank, res_buff, p * p, "resarr");
-			fill_res(res_buff, i, p * p, res);
+			// printf("Received from [%d]: \n", i);
+			// print_array_double(rank, res_buff, p * p, "resarr");
+			fill_res(res_buff, i, p, res);
+			// if (i == 1) print_grid(res, 0, p * p);
 		}
 	}
 	else
@@ -412,12 +421,14 @@ void get_results(int rank, int p, double **a, double **b, double **res)
 		// Send my results to root
 		MPI_Send(res_buff, p * p, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
 	}
+
+	free(res_buff);
 }
 
 int main(int argc, char *argv[])
 {
 	int i, j, p, n, iteration, my_column, my_row;
-	double **a, **b, **result, maxdiff, local_diff;
+	double **a, **b, **result, maxdiff, newdiff, local_diff;
 	double tstart, tend, ttotal;
 
 	if (argc < 1)
@@ -455,6 +466,7 @@ int main(int argc, char *argv[])
 	{
 		result = create_matrix(n);
 		init_matrix(result, n);
+		print_grid(result, 0, n);
 	}
 
 	//Sides for the submatrices of each proccess
@@ -494,11 +506,12 @@ int main(int argc, char *argv[])
 	while (maxdiff > TOL && iteration < MAX_ITERATIONS)
 	{
 		local_diff = get_max_diff(a, b, p, north, south, east, west);
+		// if (local_diff > 0.7 ) printf("local_diff: [%12.10lf] rank: [%d]\n", local_diff, world_rank);
 		com_borders(world_rank, my_column, my_row, p, a, north, south, east, west, send_buffer);
 
 		// All get the maximum diff
-		MPI_Allreduce(&maxdiff, &local_diff, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-		maxdiff = local_diff;
+		MPI_Allreduce(&local_diff, &newdiff, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+		maxdiff = newdiff;
 
 		// Copy b to a
 		swap_matrix(&a, &b);
@@ -510,38 +523,45 @@ int main(int argc, char *argv[])
 
 	get_results(world_rank, p, a, b, result);
 
-	print_grid(a, 0, p);
+	// printf("i'm number [%d]\n", world_rank);
+	// printf("*************\n");
+	// print_grid(a, 0, p);
+	// printf("*************\n");
+	
 	// Output final grid
-	printf("i'm number [%d]\n", world_rank);
 	if (world_rank == 0)
 	{
+		
 		printf("Final grid:\n");
 		// print_array_double(world_rank, north, p, "north");
 		// print_array_double(world_rank, east, p, "east");
 		// print_array_double(world_rank, south, p, "south");
 		// print_array_double(world_rank, west, p, "west");
 		print_grid(result, 0, n);
+		printf("------------:\n");
+
+		// Results
+		printf("Results:\n");
+		printf("Iterations=%d\n", iteration);
+		printf("Tolerance=%12.10lf\n", maxdiff);
+		printf("Running time=%12.10lf\n", ttotal);
+		
+		free_matrix(result, n);
 	}
 	// else
 	// {
 	// 	printf("i'm number [%d]\n", world_rank);
 	// }
-	printf("------------:\n");
-
-	// Results
-	printf("Results:\n");
-	printf("Iterations=%d\n", iteration);
-	printf("Tolerance=%12.10lf\n", maxdiff);
-	printf("Running time=%12.10lf\n", ttotal);
 
 	free_matrix(a, p);
 	free_matrix(b, p);
+	free(north);
+	free(south);
+	free(east);
+	free(west);
+	free(send_buffer);
 
-	if (world_rank == 0)
-	{
-		free_matrix(result, n);
-	}
-
+	printf("number [%d] ended\n", world_rank);
 	MPI_Finalize();
 
 	return 0;
