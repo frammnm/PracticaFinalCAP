@@ -206,93 +206,72 @@ double get_max_diff(double **a, double **b, int p, double *north, double *south,
 	int i, j;
 	double maxdiff = 0.0;
 
-	// Compute inner submatrix new grid values
-	for (i = 1; i < p - 1; i++)
+	// Compute border values of the submatrix
+	// Formula: self + north + south + west + east
+
+	for (i = 0; i < p; i++)
 	{
-		for (j = 1; j < p - 1; j++)
+		for (j = 0; j < p; j++)
 		{
-			//self + north + south + west + east
-			b[i][j] = 0.2 * (a[i][j] + a[i - 1][j] + a[i + 1][j] + a[i][j - 1] + a[i][j + 1]);
+			//First row
+			if (i == 0)
+			{
+				//First column
+				if (j == 0)
+				{
+					b[i][j] = 0.2 * (a[i][j] + north[j] + a[i + 1][j] + west[i] + a[i][j + 1]);
+				}
+				//Last Column
+				else if (j == p - 1)
+				{
+					b[i][j] = 0.2 * (a[i][j] + north[j] + a[i + 1][j] + a[i][j - 1] + east[i]);
+				}
+				else
+				{
+					b[i][j] = 0.2 * (a[i][j] + north[j] + a[i + 1][j] + a[i][j - 1] + a[i][j + 1]);
+				}
+			}
+			//Last Row
+			else if (i == p - 1)
+			{
+				//First column
+				if (j == 0)
+				{
+					b[i][j] = 0.2 * (a[i][j] + a[i - 1][j] + south[j] + west[i] + a[i][j + 1]);
+				}
+				//Last Column
+				else if (j == p - 1)
+				{
+					b[i][j] = 0.2 * (a[i][j] + a[i - 1][j] + south[j] + a[i][j - 1] + east[i]);
+				}
+				else
+				{
+					b[i][j] = 0.2 * (a[i][j] + a[i - 1][j] + south[j] + a[i][j - 1] + a[i][j + 1]);
+				}
+			}
+			//Inner Rows
+			else
+			{
+				//First column
+				if (j == 0)
+				{
+					b[i][j] = 0.2 * (a[i][j] + a[i - 1][j] + a[i + 1][j] + west[i] + a[i][j + 1]);
+				}
+				//Last Column
+				else if (j == p - 1)
+				{
+					b[i][j] = 0.2 * (a[i][j] + a[i - 1][j] + a[i + 1][j] + a[i][j - 1] + east[i]);
+				}
+				else
+				{
+					b[i][j] = 0.2 * (a[i][j] + a[i - 1][j] + a[i + 1][j] + a[i][j - 1] + a[i][j + 1]);
+				}
+			}
+			
 			if (fabs(b[i][j] - a[i][j]) > maxdiff)
 			{
 				maxdiff = fabs(b[i][j] - a[i][j]);
 			}
-		}
-	}
-
-	// Compute border values of the submatrix
-
-	//Row 0
-
-	//Element m[0, 0] left top corner
-	b[0][0] = 0.2 * (a[0][0] + north[0] + a[1][0] + west[0] + a[0][1]);
-	if (fabs(b[0][0] - a[0][0]) > maxdiff)
-	{
-		maxdiff = fabs(b[0][0] - a[0][0]);
-	}
-
-	//Elements m[1, p-2]
-	i = 0;
-	for (j = 1; j < p - 1; j++)
-	{
-		b[i][j] = 0.2 * (a[i][j] + north[j] + a[i + 1][j] + a[i][j - 1] + a[i][j + 1]);
-		if (fabs(b[i][j] - a[i][j]) > maxdiff)
-		{
-			maxdiff = fabs(b[i][j] - a[i][j]);
-		}
-	}
-
-	//Element m[0, p-1] right top corner
-	b[0][p - 1] = 0.2 * (a[0][p - 1] + north[p - 1] + a[1][p - 1] + a[0][j - 1] + east[0]);
-	if (fabs(b[0][p - 1] - a[0][p - 1]) > maxdiff)
-	{
-		maxdiff = fabs(b[0][p - 1] - a[0][p - 1]);
-	}
-
-	//Column 0 m[1, p-2]
-	j = 0;
-	for (i = 1; i < p - 1; i++)
-	{
-		b[i][j] = 0.2 * (a[i][j] + a[i - 1][j] + a[i + 1][j] + west[i] + a[i][j + 1]);
-		if (fabs(b[i][j] - a[i][j]) > maxdiff)
-		{
-			maxdiff = fabs(b[i][j] - a[i][j]);
-		}
-	}
-
-	//Element m[p-1, 0] left bot corner
-	b[p - 1][0] = 0.2 * (a[p - 1][0] + a[p - 2][0] + south[0] + west[p - 1] + a[p - 1][1]);
-	if (fabs(b[p - 1][0] - a[p - 1][0]) > maxdiff)
-	{
-		maxdiff = fabs(b[p - 1][0] - a[p - 1][0]);
-	}
-
-	//Row p-1
-	i = p - 1;
-	for (j = 1; j < p - 1; j++)
-	{
-		b[i][j] = 0.2 * (a[i][j] + a[i - 1][j] + south[j] + a[i - 1][j] + a[i][j + 1]);
-		if (fabs(b[i][j] - a[i][j]) > maxdiff)
-		{
-			maxdiff = fabs(b[i][j] - a[i][j]);
-		}
-	}
-
-	//Element m[p-1, p-1] right bot corner
-	b[p - 1][p - 1] = 0.2 * (a[p - 1][p - 1] + a[p - 2][p - 1] + south[p - 1] + a[p - 1][p - 2] + east[p - 2]);
-	if (fabs(b[p - 1][p - 1] - a[p - 1][p - 1]) > maxdiff)
-	{
-		maxdiff = fabs(b[p - 1][p - 1] - a[p - 1][p - 1]);
-	}
-
-	//Column p-1 m[1, p-2]
-	j = p - 1;
-	for (i = 1; i < p - 1; i++)
-	{
-		b[i][j] = 0.2 * (a[i][j] + a[i - 1][j] + a[i + 1][j] + a[i][j - 1] + east[i]);
-		if (fabs(b[i][j] - a[i][j]) > maxdiff)
-		{
-			maxdiff = fabs(b[i][j] - a[i][j]);
 		}
 	}
 
@@ -527,11 +506,11 @@ int main(int argc, char *argv[])
 	// printf("*************\n");
 	// print_grid(a, 0, p);
 	// printf("*************\n");
-	
+
 	// Output final grid
 	if (world_rank == 0)
 	{
-		
+
 		printf("Final grid:\n");
 		// print_array_double(world_rank, north, p, "north");
 		// print_array_double(world_rank, east, p, "east");
@@ -545,7 +524,7 @@ int main(int argc, char *argv[])
 		printf("Iterations=%d\n", iteration);
 		printf("Tolerance=%12.10lf\n", maxdiff);
 		printf("Running time=%12.10lf\n", ttotal);
-		
+
 		free_matrix(result, n);
 	}
 	// else
