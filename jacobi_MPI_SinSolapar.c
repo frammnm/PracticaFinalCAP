@@ -407,8 +407,9 @@ void get_results(int rank, int p, double **a, double **b, double **res)
 int main(int argc, char *argv[])
 {
 	int i, j, p, n, iteration, my_column, my_row;
-	double **a, **b, **result, maxdiff, newdiff, local_diff;
+	double **a, **b, **result, maxdiff, newdiff, new_ttotal_com, local_diff;
 	double tstart, tend, ttotal;
+	double tstart_comm, tend_comm, ttotal_comm;
 
 	if (argc < 1)
 	{
@@ -445,7 +446,7 @@ int main(int argc, char *argv[])
 	{
 		result = create_matrix(n);
 		init_matrix(result, n);
-		print_grid(result, 0, n);
+		// print_grid(result, 0, n);
 	}
 
 	//Sides for the submatrices of each proccess
@@ -486,7 +487,12 @@ int main(int argc, char *argv[])
 	{
 		local_diff = get_max_diff(a, b, p, north, south, east, west);
 		// if (local_diff > 0.7 ) printf("local_diff: [%12.10lf] rank: [%d]\n", local_diff, world_rank);
+
+		//comn time start
+		tstart_comm = MPI_Wtime();
 		com_borders(world_rank, my_column, my_row, p, a, north, south, east, west, send_buffer);
+		//comn time end
+		tend_comm = MPI_Wtime();
 
 		// All get the maximum diff
 		MPI_Allreduce(&local_diff, &newdiff, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
@@ -495,6 +501,7 @@ int main(int argc, char *argv[])
 		// Copy b to a
 		swap_matrix(&a, &b);
 		iteration++;
+		ttotal_comm += tend_comm - tstart_comm;  
 	}
 	// tend = get_clock();
 	tend = MPI_Wtime();
@@ -502,6 +509,7 @@ int main(int argc, char *argv[])
 
 	get_results(world_rank, p, a, b, result);
 
+	MPI_Allreduce(&ttotal_comm, &new_ttotal_com, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 	// printf("i'm number [%d]\n", world_rank);
 	// printf("*************\n");
 	// print_grid(a, 0, p);
@@ -523,7 +531,9 @@ int main(int argc, char *argv[])
 		printf("Results:\n");
 		printf("Iterations=%d\n", iteration);
 		printf("Tolerance=%12.10lf\n", maxdiff);
-		printf("Running time=%12.10lf\n", ttotal);
+		printf("Running simulation time=%12.10lf\n", ttotal);
+		printf("Communication time mean per node=%12.10lf\n", new_ttotal_com / n);
+		printf("Step time mean=%12.10lf\n", ttotal / iteration);
 
 		free_matrix(result, n);
 	}
@@ -540,7 +550,7 @@ int main(int argc, char *argv[])
 	free(west);
 	free(send_buffer);
 
-	printf("number [%d] ended\n", world_rank);
+	// printf("number [%d] ended\n", world_rank);
 	MPI_Finalize();
 
 	return 0;
