@@ -1,0 +1,14 @@
+10.3.17.83 slots=2 max_slots=4
+10.3.17.85 slots=2 max_slots=4
+10.3.17.81 slots=2 max_slots=4
+10.3.17.91 slots=2 max_slots=4
+10.3.17.93 slots=2 max_slots=4
+10.3.17.94 slots=2 max_slots=4
+10.3.17.95 slots=2 max_slots=4
+10.3.17.96 slots=2 max_slots=4
+10.3.17.97 slots=2 max_slots=4
+10.3.17.98 slots=2 max_slots=4
+10.3.17.90 slots=2 max_slots=4
+10.3.17.100 slots=2 max_slots=4
+10.3.17.71 slots=2 max_slots=4
+10.3.17.72 slots=2 max_slots=4
